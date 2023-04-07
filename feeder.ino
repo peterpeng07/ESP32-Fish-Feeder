@@ -18,10 +18,12 @@ String header;
 String valueString = String(5);
 int pos1 = 0;
 int pos2 = 0;
-String timeStamp;
+unsigned long timeStamp;
 
 TaskHandle_t Task1;
 TaskHandle_t Task2;
+
+int setTime = 55080; // = hr * 3600 + min * 60
 
 void connect_to_Wifi()
 {
@@ -41,6 +43,15 @@ void connect_to_Wifi()
 
   timeClient.begin();               // initialize time server
   timeClient.setTimeOffset(-14400); // offset timezone
+}
+
+void feed()
+{
+  Serial.println("Feeding...");
+  myServo.write(0);
+  delay(1000);
+  myServo.write(90);
+  Serial.println("Done!");
 }
 
 void setup()
@@ -103,21 +114,13 @@ void Task1code(void *pvParameters)
 
               if (header.indexOf("GET /?value=") >= 0)
               {
-                // for (int i = 90; i > 0; i-=1) {
-                //   myServo.write(i);
-                //   delay(20);
-                // }
                 pos1 = header.indexOf('=');
                 pos2 = header.indexOf('&');
                 valueString = header.substring(pos1 + 1, pos2);
 
                 if (valueString.toInt())
                 {
-                  Serial.println("Feeding...");
-                  myServo.write(0);
-                  delay(1000);
-                  myServo.write(90);
-                  Serial.println("Done!");
+                  feed();
                 }
               }
               client.println(SendHTML());
@@ -151,10 +154,16 @@ void Task2code(void *pvParameters)
   for (;;)
   {
     timeClient.update();
-    timeStamp = String(timeClient.getEpochTime());
-    Serial.println(timeStamp);
+    timeStamp = timeClient.getEpochTime();
+    Serial.println(String(timeStamp));
+
+    int mod = (timeStamp - setTime) % 86400;
+    Serial.println(String(mod));
+    if (mod == 0) {
+      Serial.println(timeClient.getFormattedTime());
+      feed();
+    }
     delay(1000);
-    // Serial.println(timeClient.getFormattedTime());
   }
 }
 
